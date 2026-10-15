@@ -1,0 +1,36 @@
+# Private mailbox configuration; only the anonymous template is public.
+/accounts*.json
+!/accounts.example.json
+/configs/
+/.env
+/.env.*
+!/.env.example
+
+# Local data, including recovery copies. Keep empty directories in Git.
+/passwords/*
+!/passwords/.gitkeep
+/logs/*
+!/logs/.gitkeep
+/backups/
+*.eml
+*.mbox
+
+# Local reports and agent handoff; never mailbox-specific public docs.
+/MIGRATION.md
+/docs/agent-context.md
+/.migration.lock
+/work/
+
+# Python, editors and macOS.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+._*
+*.swp
+*.swo
+*~

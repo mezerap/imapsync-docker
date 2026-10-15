@@ -1,0 +1,21 @@
+[
+  {
+    "id": "ukazka",
+    "enabled": false,
+    "source": {
+      "host": "imap.old.example.com",
+      "port": 993,
+      "user": "schranka@example.com",
+      "password_file": "ukazka-source.txt"
+    },
+    "target": {
+      "host": "imap.new.example.com",
+      "port": 993,
+      "user": "schranka@example.com",
+      "password_file": "ukazka-target.txt"
+    },
+    "automap": false,
+    "addheader": true,
+    "folder_map": {}
+  }
+]

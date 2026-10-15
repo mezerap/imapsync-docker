@@ -1,0 +1,12 @@
+services:
+  imapsync:
+    image: gilleslamiral/imapsync@sha256:ece980cb0fd2806369975d2989a3e8d9fbf28d632cdd45a05961a1e511612ed5
+    platform: linux/amd64
+    working_dir: /logs
+    # Výchozí spuštění pouze zobrazí nápovědu.
+    command: ["imapsync", "--help"]
+    volumes:
+      - ./accounts.json:/data/accounts.json:ro
+      - ./passwords:/data/passwords:ro
+      - ./logs:/logs
+      - ./patches/IMAPClient.pm:/usr/share/perl5/Mail/IMAPClient.pm:ro

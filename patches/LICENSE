@@ -1,0 +1,24 @@
+Mail::IMAPClient 3.43 — original copyright and license notice
+
+Copyright (C) 1999-2003 The Kernen Group, Inc.
+Copyright (C) 2007-2009 Mark Overmeer
+Copyright (C) 2010-2021 Phil Pearl (Lobbes)
+All rights reserved.
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.8.0 or,
+at your option, any later version of Perl 5 you may have available.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See either the
+GNU General Public License or the Artistic License for more details.
+
+Original notice:
+https://metacpan.org/release/PLOBBES/Mail-IMAPClient-3.43/view/lib/Mail/IMAPClient.pod#COPYRIGHT-AND-LICENSE
+Perl licensing and full license texts:
+https://dev.perl.org/licenses/
+
+This notice applies to IMAPClient.pm in this directory, including its local
+modifications. The project's top-level MIT license does not replace it.
+Local modifications are documented in ../THIRD_PARTY_NOTICES.md.
