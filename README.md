@@ -1,25 +1,26 @@
 # Imapsync CLI
 
-Lokální migrace IMAP schránek přes Docker, s konfigurací v JSONu a průvodcem
-v terminálu. Podporuje výběr více účtů, kontrolu přihlášení, velikosti složek,
-zkušební průchod, práci se složkami i skutečný přenos. Webové UI není součástí.
+Migrate IMAP mailboxes locally with Docker, a JSON configuration, and an
+interactive terminal wizard. Select multiple accounts, check credentials,
+inspect folder sizes, run a simulation, create folders, or transfer messages.
+This project provides a CLI only.
 
-## Požadavky
+## Requirements
 
-- macOS, Bash, Git a Python 3.9 nebo novější. Projekt je ověřený na macOS;
-  používá Unixové knihovny `fcntl` a `curses`, nativní Windows nepodporuje.
-- Spuštěný [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/)
-  s Docker Compose. Případný Python instalujte z [python.org](https://www.python.org/downloads/macos/).
-- Existující zdrojová i cílová schránka, dostupné přes přímé SSL/TLS,
-  obvykle na portu 993. STARTTLS a OAuth nejsou v tomto obalu implementované.
+- macOS, Bash, Git, and Python 3.9 or later. This project has been tested on
+  macOS and uses the Unix `fcntl` and `curses` modules. Native Windows is not
+  supported.
+- A running [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/)
+  installation with Docker Compose. If needed, install Python from
+  [python.org](https://www.python.org/downloads/macos/).
+- Existing source and destination mailboxes accessible over direct SSL/TLS,
+  usually on port 993. This wrapper does not implement STARTTLS or OAuth.
 
-Python nevyžaduje žádné balíčky přes pip. Bash spouští Python, samotný imapsync
-běží v jednorázovém kontejneru. Image používá AMD64; na Apple Silicon se spouští
-přes podporu této architektury v Docker Desktopu.
+No pip packages are required. The Bash launcher starts Python, while imapsync
+runs in a disposable container. The image uses AMD64; on Apple Silicon,
+Docker Desktop runs it using its AMD64 support.
 
-## Instalace z GitHubu na novém počítači
-
-Adresu repozitáře v příkladu nahraďte svou skutečnou adresou:
+## Install from GitHub on a new computer
 
 ```sh
 mkdir -p ~/local-docker
@@ -28,7 +29,7 @@ git clone https://github.com/mezerap/imapsync-docker.git imapsync-migration
 cd imapsync-migration
 ```
 
-Ověřte nástroje a spusťte Docker Desktop:
+Start Docker Desktop and check the required tools:
 
 ```sh
 python3 --version
@@ -37,7 +38,8 @@ docker compose version
 docker info
 ```
 
-V **nově naklonované** složce vytvořte místní konfiguraci a adresáře:
+In the **freshly cloned** directory, create your local configuration and prepare
+the data directories:
 
 ```sh
 cp accounts.example.json accounts.json
@@ -49,30 +51,31 @@ docker compose pull imapsync
 ./migrate.sh --help
 ```
 
-`cp` neopakujte nad již vyplněným `accounts.json`: přepsal by vaše účty.
-GitHub záměrně neobsahuje skutečné účty, hesla ani logy. Na novém počítači je
-musíte doplnit sami nebo obnovit ze své soukromé zálohy.
+Do not repeat the `cp` command over an existing, configured `accounts.json`:
+it would overwrite your accounts. Real accounts, passwords, and logs are
+excluded from GitHub. On a new computer, enter them yourself or restore them
+from your private backup.
 
-## Přidání schránky
+## Add a mailbox
 
-Upravte anonymní vzor v `accounts.json`. Například:
+Edit the anonymous template in `accounts.json`. For example:
 
 ```json
 [
   {
-    "id": "prvni-schranka",
+    "id": "first-mailbox",
     "enabled": false,
     "source": {
       "host": "imap.old.example.com",
       "port": 993,
-      "user": "schranka@example.com",
-      "password_file": "prvni-source.txt"
+      "user": "mailbox@example.com",
+      "password_file": "first-source.txt"
     },
     "target": {
       "host": "imap.new.example.com",
       "port": 993,
-      "user": "schranka@example.com",
-      "password_file": "prvni-target.txt"
+      "user": "mailbox@example.com",
+      "password_file": "first-target.txt"
     },
     "automap": false,
     "addheader": true,
@@ -81,37 +84,39 @@ Upravte anonymní vzor v `accounts.json`. Například:
 ]
 ```
 
-Servery a uživatelská jména nahraďte skutečnými údaji. Vytvořte soubory
-`passwords/prvni-source.txt` a `passwords/prvni-target.txt` a do každého zapište
-jen příslušné heslo na první řádek, bez uvozovek nebo dalších poznámek.
+Replace the servers and usernames with the real values. Create
+`passwords/first-source.txt` and `passwords/first-target.txt`. Put only the
+corresponding password on the first line of each file, without quotes or notes.
 
 ```sh
-chmod 600 passwords/prvni-source.txt passwords/prvni-target.txt
+chmod 600 passwords/first-source.txt passwords/first-target.txt
 ```
 
-Hesla nevkládejte do JSONu ani do příkazové řádky. Další schránku přidáte jako
-další objekt do stejného seznamu, oddělený čárkou, s unikátním `id` a vlastními
-soubory hesel. Po novém spuštění průvodce se objeví automaticky.
+Keep passwords out of JSON and command-line arguments. To add another mailbox,
+append another object to the same JSON array, separated by a comma, with a
+unique `id` and its own password files. It will appear the next time you start
+the wizard.
 
-### Význam nastavení
+### Configuration fields
 
-| Položka | Význam |
+| Field | Meaning |
 | --- | --- |
-| `id` | Unikátní název účtu, 1–64 písmen/číslic, `_` nebo `-`; první znak je písmeno/číslice. |
-| `enabled` | Zařazení do automatického `--all`. Ručně lze vybrat i vypnutý účet, jen pro daný běh. Výchozí `false`. |
-| `source`, `target` | Zdrojový/cílový server (`host`), uživatel (`user`), port (výchozí `993`) a `password_file`. |
-| `password_file` | Samotný název souboru v `passwords/`, bez cesty. |
-| `automap` | Automatický odhad mapování systémových složek; výchozí `false`. |
-| `folder_map` | Přesná pravidla zdroj → cíl; mají přednost před automatickým mapováním. Výchozí `{}`. |
-| `separator2` | Volitelný jednoznakový oddělovač hierarchie cílového serveru. Hodnotu určuje cílový server; například tečka nebo svislá čára. |
-| `addheader` | Doplnění identifikační hlavičky u zpráv bez ní při přenosu; při vynechání výchozí `false`, vzor používá `true`. |
+| `id` | Unique account name: 1–64 letters, digits, underscores, or hyphens. The first character must be a letter or digit. |
+| `enabled` | Includes the account in `--all`. A disabled account can still be selected manually for a single run. Defaults to `false`. |
+| `source`, `target` | Source/destination server (`host`), username (`user`), port (defaults to `993`), and `password_file`. |
+| `password_file` | A filename inside `passwords/`, without a directory path. |
+| `automap` | Automatically estimates mappings for special folders. Defaults to `false`. |
+| `folder_map` | Exact source → destination mappings; these take precedence over automatic mapping. Defaults to `{}`. |
+| `separator2` | Optional single-character hierarchy separator used by the destination server, such as a dot or vertical bar. Use the value required by that server. |
+| `addheader` | Adds an identifying header when transferring messages that lack one. Defaults to `false` when omitted; the template sets it to `true`. |
 
-JSON nepodporuje komentáře. Neznámé položky se odmítají. Jedna konfigurace
-nepřijímá libovolné vlastní přepínače imapsync.
+JSON does not support comments. Unknown fields are rejected. The configuration
+does not accept arbitrary additional imapsync switches.
 
-### Přesné mapování složek
+### Explicit folder mappings
 
-Příklad pro převod variant složek do ploché struktury cíle:
+This example maps several folder name variants into a flat destination
+structure:
 
 ```json
 "automap": false,
@@ -133,120 +138,129 @@ Příklad pro převod variant složek do ploché struktury cíle:
 }
 ```
 
-Tento fragment vložte do příslušného objektu účtu. Není to univerzální profil:
-nejprve ověřte názvy na obou serverech. Více zdrojových složek se zde slučuje
-do jedné cílové, včetně roční podsložky Koše. Pro běžný automatický odhad lze
-použít `automap: true`; výsledek vždy zkontrolujte zkušebním průchodem.
+Place this fragment inside the relevant account object. Check the folder names
+on both servers before using it: this is an example, not a universal profile.
+It merges several source folders into a single destination folder, including
+a yearly Trash subfolder. For automatic mapping, use `automap: true` and always
+review the result in a dry run.
 
-## Průvodce v terminálu
+## Interactive terminal wizard
 
 ```sh
 ./migrate.sh
 ```
 
-- **↑/↓** (nebo `j`/`k`): pohyb.
-- **Mezerník**: označení/odznačení účtu; lze vybrat více účtů.
-- **a**: označit/odznačit všechny účty.
-- **Enter**: potvrzení; bez označení účtů zvolí aktuální řádek.
-- **q**, **Esc** nebo **Ctrl+C**: ukončení.
+- **↑/↓** or **j/k**: move between items.
+- **Space**: select or deselect an account; multiple accounts can be selected.
+- **a**: select or deselect all accounts.
+- **Enter**: confirm; if no accounts are selected, choose the highlighted account.
+- **q**, **Esc**, or **Ctrl+C**: exit.
 
-Po účtech vyberete režim a zkontrolujete souhrn včetně mapování. Výchozí režim
-je simulace. V poslední nabídce je u skutečných změn výchozí **Zrušit**.
-Průvodce neupravuje `accounts.json` ani soubory hesel. V terminálu bez vhodného
-`TERM` zůstává číselná nabídka; mimo interaktivní terminál použijte přímé argumenty.
-Stejné nabídky otevře i `python3 migrate.py`.
+After choosing accounts, select a mode and review the summary, including folder
+mappings. The default mode is a dry run. For modes that make real changes,
+the final confirmation defaults to **Cancel**. The wizard does not modify
+`accounts.json` or password files. A numbered menu is used when the terminal
+lacks a suitable `TERM`; outside an interactive terminal, use direct arguments.
+Running `python3 migrate.py` opens the same menus. The current terminal prompts
+are in Czech.
 
-| Režim | Přepínač imapsync | Chování |
+| Mode | Imapsync switches | Behavior |
 | --- | --- | --- |
-| `check` | `--justlogin` | Jen ověření přihlášení. |
-| `sizes` | `--justfoldersizes` | Složky, počty a velikosti zpráv. |
-| `dry-run` | `--dry` | Porovnání a simulace, bez přenosu. |
-| `folders-dry-run` | `--justfolders --dry` | Náhled mapování/vytvoření složek bez změn. |
-| `folders` | `--justfolders` | Skutečně vytváří složky, bez přenosu zpráv. |
-| `sync` | Bez těchto omezení | Skutečný přenos zpráv. |
-| `plan` | Příkaz se nespouští | Jen vypíše příkaz, bez Dockeru a připojení. |
+| `check` | `--justlogin` | Check credentials only. |
+| `sizes` | `--justfoldersizes` | Report folders, message counts, and sizes. |
+| `dry-run` | `--dry` | Compare and simulate without transferring messages. |
+| `folders-dry-run` | `--justfolders --dry` | Preview folder mapping and creation without changes. |
+| `folders` | `--justfolders` | Create folders without transferring messages. |
+| `sync` | No restriction from these switches | Transfer messages. |
+| `plan` | Does not execute the command | Print the command without running Docker or connecting to servers. |
 
-Pro první schránku použijte postupně **check → dry-run → sync** a potom další
-dry-run. Po posledním průchodu by již přenesené zprávy měly být přeskočené.
-Ve zkušebním režimu nelze plně simulovat obsah složky, která na cíli ještě
-neexistuje; samostatné vytvoření složek už představuje skutečnou změnu.
+For your first mailbox, run **check → dry-run → sync**, followed by another
+dry run. Messages already transferred should be skipped on subsequent runs.
+A dry run cannot fully simulate the contents of a destination folder that does
+not exist yet; creating that folder is a real change.
 
-## Přímé spuštění a více účtů
+## Direct commands and multiple accounts
 
-Spouštěč předává argumenty Pythonu, například:
+The launcher passes its arguments to Python. For example:
 
 ```sh
-./migrate.sh --account prvni-schranka --mode check
-./migrate.sh --account prvni-schranka --mode sizes
-./migrate.sh --account prvni-schranka --mode dry-run
-./migrate.sh --account prvni-schranka --mode folders-dry-run
+./migrate.sh --account first-mailbox --mode check
+./migrate.sh --account first-mailbox --mode sizes
+./migrate.sh --account first-mailbox --mode dry-run
+./migrate.sh --account first-mailbox --mode folders-dry-run
 ./migrate.sh --all --mode dry-run
 ```
 
-Záměrné spuštění režimů se změnami:
+To intentionally run modes that make changes:
 
 ```sh
-./migrate.sh --account prvni-schranka --mode folders
-./migrate.sh --account prvni-schranka --mode sync
+./migrate.sh --account first-mailbox --mode folders
+./migrate.sh --account first-mailbox --mode sync
 ```
 
-**Přímé argumenty nevyvolají potvrzovací otázku.** Bez `--mode` je při přímém
-výběru účtu výchozí `plan`. `--all` zahrne pouze `enabled: true`; ruční výběr
-v průvodci i `--account` funguje jednorázově i při `false`.
+**Direct commands do not ask for confirmation.** When selecting accounts via
+arguments without `--mode`, the default is `plan`. `--all` includes only
+accounts with `enabled: true`. Manual selection in the wizard and `--account`
+can select an account for a single run even when it is disabled.
 
-Pro oddělené místní konfigurace používejte ignorovaný adresář `configs/`:
+Use the ignored `configs/` directory for separate local configurations:
 
 ```sh
-./migrate.sh --config configs/klient.json
-./migrate.sh --config configs/klient.json --account prvni-schranka --mode plan
+./migrate.sh --config configs/client.json
+./migrate.sh --config configs/client.json --account first-mailbox --mode plan
 ```
 
-Relativní `--config` se počítá od aktuálního pracovního adresáře. Hesla a logy
-zůstávají vždy v `passwords/` a `logs/` vedle programu.
+Relative `--config` paths are resolved from the current working directory.
+Passwords and logs always remain in `passwords/` and `logs/` next to the program.
 
-## Logy, opakování a omezení
+## Logs, repeat runs, and limitations
 
-Výstup obsahuje jednotlivé přenosy/přeskočení, ID, velikosti, rychlost, chyby
-a závěrečné statistiky. Každý běh uloží log do `logs/` s id účtu, režimem a časem
-UTC v názvu. Logy mohou obsahovat soukromá metadata; ladicí režimy mohou odhalit
-více údajů. Hesla se do kontejneru připojují jako soubory pouze pro čtení.
+Output includes individual transfers and skipped messages, IDs, sizes, speed,
+errors, and final statistics. Each run saves a log under `logs/`, with the
+account ID, mode, and UTC timestamp in its filename. Logs can contain private
+metadata; debugging modes may expose additional details. Password files are
+mounted read-only into the container.
 
-Při opakování zachovejte mapování a způsob identifikace zpráv. Imapsync porovnává
-Message-Id/Received a již existující zprávy obvykle přeskočí. Skript vždy přidává
-`--nosyncduplicates`. Nezapíná mazání zpráv ani složek; může synchronizovat
-příznaky. Složky Koš/Spam se řídí retenčními pravidly poskytovatele.
+Keep folder mappings and message identification settings consistent across
+repeat runs. Imapsync compares Message-Id/Received headers and normally skips
+messages already present. The wrapper always adds `--nosyncduplicates`. It does
+not enable message or folder deletion; it may synchronize message flags.
+Trash and Spam folders are subject to the provider's retention policies.
 
-Celý výběr účtů se ověří před prvním připojením. Dávka běží postupně a první
-chyba ji zastaví. `.migration.lock` brání souběžným úlohám spuštěným tímto
-skriptem ve stejném projektu; nehlídá jiné kopie projektu či ruční Docker běhy.
-Terminál nechte otevřený, Docker spuštěný a počítač vzhůru. Ukončení klienta
-není potvrzení dokončení přenosu; před opakováním zkontrolujte log a kontejnery.
+The complete account selection is validated before the first connection.
+Accounts run sequentially, and the batch stops at the first error.
+`.migration.lock` prevents simultaneous jobs started by this script in the same
+project; it does not cover other project copies or manual Docker commands.
+Keep the terminal open, Docker running, and the computer awake. A closed client
+does not confirm that a transfer has finished; check logs and containers before
+starting another run.
 
-## Aktualizace a opětovné použití
+## Update and reuse
 
-Až nebude běžet žádná úloha, aktualizujte kód:
+When no job is running, update the code:
 
 ```sh
 git pull --ff-only
 docker compose pull imapsync
 ```
 
-Místní ignorované účty, hesla a logy zůstávají mimo Git. Pokud Git hlásí místní
-změny programu, nejprve je vyřešte; příkaz `reset --hard` zde nepoužívejte.
+Ignored local accounts, passwords, and logs remain outside Git. If Git reports
+local code changes, resolve them first; do not use `reset --hard` for updates.
 
-Image je připnutý na ověřený digest verze 2.326. `pull` stáhne verzi určenou
-Compose, **nepřepne ji automaticky na nejnovější imapsync**. Změna digestu
-vyžaduje ověření kompatibility `patches/IMAPClient.pm` a testů; nepřepisujte ho
-naslepo na `latest`. Tato knihovna zachovává bajtovou délku APPEND při Unicode
-vstupu a zakazuje slepé opakování zápisu po nejasné odpovědi. Původ a podmínky
-převzatého kódu jsou v [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+The image is pinned to a tested digest of version 2.326. `pull` downloads the
+version specified in Compose; **it does not automatically upgrade to the latest
+imapsync**. Changing the digest requires checking compatibility with
+`patches/IMAPClient.pm` and running the tests. Do not blindly replace it with
+`latest`. The patched library preserves APPEND byte lengths with Unicode input
+and prevents blind retries of writes after an uncertain response. Its origin
+and terms are documented in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Kontejnery používají `--rm` a po běhu se odstraní, image zůstává. Data jsou
-bind mounty v projektu: `docker compose down -v` nesmaže místní hesla ani logy.
-Úplné odstranění adresáře smaže i místní data a obnovovací zálohy; nepatří do
-běžné aktualizace.
+Containers use `--rm` and are removed after each run; the image remains.
+Project data uses bind mounts: `docker compose down -v` does not remove local
+passwords or logs. Deleting the entire project directory also deletes local
+data and recovery backups; this is not part of a normal update.
 
-## Ověření bez připojení ke schránkám
+## Verify without connecting to mailboxes
 
 ```sh
 ./migrate.sh --help
@@ -254,55 +268,60 @@ docker compose config --quiet
 python3 -B -m unittest discover -s tests -p 'test_*.py'
 ```
 
-Testy ověřují nabídky, více účtů, režimy, bezpečné zrušení a souběhový zámek.
-Regresi bajtové délky APPEND lze ověřit na umělých datech v kontejneru:
+Tests cover menus, multiple accounts, modes, safe cancellation, and the
+concurrency lock. Run the APPEND byte-length regression tests with synthetic
+data inside the container:
 
 ```sh
 docker compose run --rm -T --entrypoint perl \
   --volume "$PWD/tests:/tests:ro" imapsync /tests/append-octets.t
 ```
 
-Žádný z těchto testů se nepřihlašuje ke schránkám ani nemigruje zprávy.
+None of these checks logs into mailboxes or migrates messages.
 
-## Co patří do GitHubu
+## What belongs on GitHub
 
-Verzujte program, Compose, anonymní vzor, testy, dokumentaci a potřebnou opravu
-knihovny. `.gitignore` vynechává skutečné `accounts*.json`, `configs/`, hesla,
-logy včetně `logs/recovery/`, místní `MIGRATION.md`, předávací kontext,
-prostředí a dočasné soubory. Výjimkou je `accounts.example.json` a prázdné
-`.gitkeep` v datových adresářích, aby se vytvořily i po klonování.
+Track the program, Compose file, anonymous template, tests, documentation, and
+required library patch. `.gitignore` excludes real `accounts*.json` files,
+`configs/`, passwords, logs including `logs/recovery/`, local `MIGRATION.md`,
+the agent handoff file, environment files, and temporary files. Exceptions are
+`accounts.example.json` and empty `.gitkeep` files in the data directories,
+so those directories are created when cloning.
 
-`.gitignore` neodstraní soubor, který byl již dříve zapsaný v historii Gitu.
-Skutečné údaje nepřidávejte pomocí `git add -f` ani do příkladů a README.
-Ignorované soubory si případně zálohujte soukromě mimo repozitář.
+`.gitignore` does not remove files already committed to Git history. Do not
+add real data using `git add -f` or include it in examples or the README.
+Keep private backups of ignored files outside the repository if needed.
 
-Pro první nahrání použijte prázdný GitHub repozitář. Pokud již místní `.git`
-existuje, první příkaz vynechte. Adresu vzdáleného repozitáře nahraďte vlastní:
+To publish a separate copy, first create an empty GitHub repository. Skip
+`git init` if the local `.git` directory already exists, and replace the remote
+URL below with your own repository URL:
 
 ```sh
 git init -b main
 git add .
 git status --short
 git commit -m "Initial CLI project"
-git remote add origin https://github.com/mezerap/imapsync-docker.git
+git remote add origin https://github.com/YOUR_ACCOUNT/YOUR_REPOSITORY.git
 git push -u origin main
 ```
 
-Před commitem má seznam obsahovat jen program a anonymní vzor, nikoli skutečné
-účty, hesla, logy či lokální migrační záznamy. Pokud už `origin` existuje,
-zkontrolujte `git remote -v` a nepřidávejte druhý stejný remote.
+Before committing, make sure the file list contains only the program and
+anonymous examples, without real accounts, passwords, logs, or local migration
+reports. If `origin` already exists, check `git remote -v` and update that remote
+instead of adding it again.
 
+## License
 
-## Licence
+The wrapper code (`migrate.py`, `migrate.sh`, `terminal_menu.py`), original tests,
+configuration, and original project documentation are covered by the
+[MIT License](LICENSE).
 
-Vlastní kód obalu (`migrate.py`, `migrate.sh`, `terminal_menu.py`), vlastní testy,
-konfigurace a původní dokumentace tohoto projektu jsou pod [MIT licencí](LICENSE).
+The third-party `patches/IMAPClient.pm`, **including local modifications, is not
+relicensed under MIT**. It retains its original Perl terms: a choice of the
+Artistic License or GNU GPL version 1 or later, as stated in its original notice.
+See [patches/LICENSE](patches/LICENSE) and
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Převzatý `patches/IMAPClient.pm` **včetně místních úprav není přelicencován na MIT**.
-Zůstává pod původními podmínkami Perlu: volba Artistic License nebo GNU GPL
-verze 1 či novější podle původního oznámení. Viz [patches/LICENSE](patches/LICENSE)
-a [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Python, Perl, imapsync a další součásti Docker image mají vlastní licenční
-podmínky. MIT tohoto repozitáře se na ně nevztahuje. Projekt nevyžaduje externí
-Python balíčky přes pip; používá standardní knihovnu.
+Python, Perl, imapsync, and other components in the Docker image have their own
+license terms. This repository's MIT License does not apply to them. The
+project uses Python's standard library and requires no external pip packages.
